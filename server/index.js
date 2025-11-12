@@ -19,6 +19,7 @@ dbService.initializeDatabase();
 app.use('/api/products', require('./routes/products'));
 app.use('/api/calculations', require('./routes/calculations'));
 app.use('/api/settings', require('./routes/settings'));
+app.use('/api/export', require('./routes/export'));
 
 // Serve static files from React app
 if (process.env.NODE_ENV === 'production') {

@@ -360,7 +360,49 @@ function App() {
 
           {/* Ürün Seçimi */}
           <section className="card">
-            <h2>Ürün Seçimi</h2>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+              <h2 style={{ margin: 0 }}>Ürün Seçimi</h2>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button
+                  className="btn btn-secondary"
+                  onClick={async () => {
+                    try {
+                      // Excel dosyasını indir
+                      const link = document.createElement('a');
+                      link.href = `${API_BASE}/export/excel`;
+                      link.download = 'RAF_Fiyat_Analizi_Urunler.xlsx';
+                      document.body.appendChild(link);
+                      link.click();
+                      document.body.removeChild(link);
+                    } catch (error) {
+                      alert('Excel indirme hatası: ' + error.message);
+                    }
+                  }}
+                  title="Excel İndir"
+                >
+                  📥 Excel İndir
+                </button>
+                <button
+                  className="btn btn-primary"
+                  onClick={async () => {
+                    try {
+                      const response = await axios.get(`${API_BASE}/export/excel-drive`);
+                      if (response.data.success) {
+                        const driveInfo = response.data.driveInfo;
+                        alert(`Excel dosyası Google Drive'a yüklendi!\n\nDosya Adı: ${driveInfo.fileName}\n\nDrive Link: ${driveInfo.webViewLink}\n\nİndirme Linki: ${driveInfo.directDownloadLink}`);
+                        // Linki yeni sekmede aç
+                        window.open(driveInfo.webViewLink, '_blank');
+                      }
+                    } catch (error) {
+                      alert('Google Drive yükleme hatası: ' + (error.response?.data?.error || error.message));
+                    }
+                  }}
+                  title="Excel'i Google Drive'a Yükle"
+                >
+                  ☁️ Drive'a Yükle
+                </button>
+              </div>
+            </div>
             <div className="product-list">
               {products.map(product => (
                 <div

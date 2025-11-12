@@ -12,6 +12,12 @@ dist/
 .env.production
 .env.development
 
+# Google Drive credentials
+credentials.json
+token.json
+service-account.json
+temp/
+
 # Database
 data/*.db
 data/*.db-journal
