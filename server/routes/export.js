@@ -142,11 +142,37 @@ async function createExcelFile() {
   return filePath;
 }
 
-// Excel dosyasını Google Drive'a yükle
-async function uploadToDrive(filePath, fileName = 'RAF_Fiyat_Analizi_Urunler.xlsx') {
+// Excel dosyasını Google Drive'a yükle (mevcut dosyayı güncelle veya yeni oluştur)
+async function uploadToDrive(filePath, fileName = 'RAF_Fiyat_Analizi_Urunler.xlsx', existingFileId = null) {
   try {
     const drive = await getDriveClient();
     
+    if (existingFileId) {
+      // Mevcut dosyayı güncelle
+      const media = {
+        mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        body: fs.createReadStream(filePath)
+      };
+
+      await drive.files.update({
+        fileId: existingFileId,
+        media: media,
+        fields: 'id, name, webViewLink'
+      });
+
+      const webViewLink = `https://drive.google.com/file/d/${existingFileId}/view`;
+      const directDownloadLink = `https://drive.google.com/uc?export=download&id=${existingFileId}`;
+
+      return {
+        fileId: existingFileId,
+        fileName: fileName,
+        webViewLink: webViewLink,
+        directDownloadLink: directDownloadLink,
+        updated: true
+      };
+    }
+    
+    // Yeni dosya oluştur
     const fileMetadata = {
       name: fileName,
       parents: [] // Root klasörüne yükle, isterseniz belirli bir klasör ID'si ekleyebilirsiniz
@@ -190,21 +216,23 @@ async function uploadToDrive(filePath, fileName = 'RAF_Fiyat_Analizi_Urunler.xls
   }
 }
 
-// Excel export ve Drive'a yükle
+// Excel export ve Drive'a yükle (mevcut dosyayı güncelle veya yeni oluştur)
 router.get('/excel-drive', async (req, res) => {
   try {
+    const existingFileId = req.query.fileId || null; // Query parametresinden fileId al
+    
     // Excel dosyası oluştur
     const filePath = await createExcelFile();
     
-    // Google Drive'a yükle
-    const driveInfo = await uploadToDrive(filePath);
+    // Google Drive'a yükle (mevcut dosyayı güncelle veya yeni oluştur)
+    const driveInfo = await uploadToDrive(filePath, 'RAF_Fiyat_Analizi_Urunler.xlsx', existingFileId);
     
     // Geçici dosyayı sil
     fs.unlinkSync(filePath);
     
     res.json({
       success: true,
-      message: 'Excel dosyası Google Drive\'a başarıyla yüklendi',
+      message: existingFileId ? 'Excel dosyası Google Drive\'da güncellendi' : 'Excel dosyası Google Drive\'a başarıyla yüklendi',
       driveInfo: driveInfo
     });
   } catch (error) {

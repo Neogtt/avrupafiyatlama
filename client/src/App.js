@@ -6,6 +6,12 @@ import './App.css';
 const API_BASE = process.env.REACT_APP_API_URL || 
   (process.env.NODE_ENV === 'production' ? '/api' : 'http://localhost:3001/api');
 
+// Debug için API_BASE'i console'a yazdır
+if (process.env.NODE_ENV === 'development') {
+  console.log('API_BASE:', API_BASE);
+  console.log('NODE_ENV:', process.env.NODE_ENV);
+}
+
 function App() {
   const [calculationMode, setCalculationMode] = useState('forward'); // 'forward' veya 'reverse'
   const [products, setProducts] = useState([]);
@@ -74,10 +80,18 @@ function App() {
 
   const loadProducts = async () => {
     try {
+      console.log('Ürünler yükleniyor...', API_BASE);
       const response = await axios.get(`${API_BASE}/products`);
-      setProducts(response.data);
+      console.log('Ürünler yüklendi:', response.data?.length || 0);
+      setProducts(response.data || []);
     } catch (error) {
       console.error('Ürünler yüklenirken hata:', error);
+      console.error('Hata detayı:', error.response?.data || error.message);
+      setProducts([]); // Hata durumunda boş array
+      // Kullanıcıya bilgi ver (sadece production'da değil, her yerde)
+      if (error.response?.status === 404 || error.code === 'ECONNREFUSED') {
+        console.warn('API bağlantı hatası - backend çalışıyor mu?');
+      }
     }
   };
 
@@ -386,20 +400,67 @@ function App() {
                   className="btn btn-primary"
                   onClick={async () => {
                     try {
-                      const response = await axios.get(`${API_BASE}/export/excel-drive`);
+                      // Önceki fileId'yi localStorage'dan al
+                      const savedFileId = localStorage.getItem('driveFileId');
+                      const fileIdParam = savedFileId ? `?fileId=${savedFileId}` : '';
+                      
+                      const response = await axios.get(`${API_BASE}/export/excel-drive${fileIdParam}`);
                       if (response.data.success) {
                         const driveInfo = response.data.driveInfo;
-                        alert(`Excel dosyası Google Drive'a yüklendi!\n\nDosya Adı: ${driveInfo.fileName}\n\nDrive Link: ${driveInfo.webViewLink}\n\nİndirme Linki: ${driveInfo.directDownloadLink}`);
+                        
+                        // FileId'yi kaydet (bir sonraki seferde güncellemek için)
+                        if (driveInfo.fileId) {
+                          localStorage.setItem('driveFileId', driveInfo.fileId);
+                        }
+                        
+                        alert(`Excel dosyası Google Drive'a ${driveInfo.updated ? 'güncellendi' : 'yüklendi'}!\n\nDosya ID: ${driveInfo.fileId}\n\nDosya Adı: ${driveInfo.fileName}\n\nDrive Link: ${driveInfo.webViewLink}\n\nİndirme Linki: ${driveInfo.directDownloadLink}`);
                         // Linki yeni sekmede aç
                         window.open(driveInfo.webViewLink, '_blank');
+                        // Verileri yenile
+                        loadProducts();
                       }
                     } catch (error) {
                       alert('Google Drive yükleme hatası: ' + (error.response?.data?.error || error.message));
                     }
                   }}
-                  title="Excel'i Google Drive'a Yükle"
+                  title="Excel'i Google Drive'a Yükle (Mevcut dosyayı günceller)"
                 >
                   ☁️ Drive'a Yükle
+                </button>
+                <button
+                  className="btn btn-success"
+                  onClick={async () => {
+                    // Önceki fileId'yi localStorage'dan al veya varsayılan kullan
+                    const savedFileId = localStorage.getItem('driveFileId') || '106tReHz9EUDdtBh4T05BnKLeh8QTSa-y';
+                    const fileId = prompt('Google Drive File ID girin:\n\nÖrnek: 106tReHz9EUDdtBh4T05BnKLeh8QTSa-y', savedFileId);
+                    if (!fileId) return;
+                    
+                    // FileId'yi kaydet
+                    localStorage.setItem('driveFileId', fileId.trim());
+                    
+                    const syncMode = confirm('Mevcut verileri silip yeniden mi yükleyelim?\n\nOK = Tümünü sil ve yeniden yükle\nCancel = Mevcut verilerle birleştir');
+                    
+                    try {
+                      setLoading(true);
+                      const response = await axios.post(`${API_BASE}/import/drive-sync`, {
+                        fileId: fileId.trim(),
+                        syncMode: syncMode ? 'replace' : 'merge'
+                      });
+                      
+                      if (response.data.success) {
+                        const result = response.data.result;
+                        alert(`✅ Google Drive'dan başarıyla yüklendi!\n\nDosya: ${response.data.fileName}\n\nYeni: ${result.imported} ürün\nGüncellenen: ${result.updated} ürün\nAtlanan: ${result.skipped} satır`);
+                        loadProducts();
+                      }
+                    } catch (error) {
+                      alert('Google Drive'dan yükleme hatası: ' + (error.response?.data?.error || error.message));
+                    } finally {
+                      setLoading(false);
+                    }
+                  }}
+                  title="Google Drive'dan Excel Yükle ve Senkronize Et"
+                >
+                  📥 Drive'dan Yükle
                 </button>
               </div>
             </div>
