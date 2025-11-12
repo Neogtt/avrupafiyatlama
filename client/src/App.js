@@ -432,13 +432,13 @@ function App() {
                   onClick={async () => {
                     // Önceki fileId'yi localStorage'dan al veya varsayılan kullan
                     const savedFileId = localStorage.getItem('driveFileId') || '106tReHz9EUDdtBh4T05BnKLeh8QTSa-y';
-                    const fileId = prompt('Google Drive File ID girin:\n\nÖrnek: 106tReHz9EUDdtBh4T05BnKLeh8QTSa-y', savedFileId);
+                    const fileId = window.prompt('Google Drive File ID girin:\n\nÖrnek: 106tReHz9EUDdtBh4T05BnKLeh8QTSa-y', savedFileId);
                     if (!fileId) return;
                     
                     // FileId'yi kaydet
                     localStorage.setItem('driveFileId', fileId.trim());
                     
-                    const syncMode = confirm('Mevcut verileri silip yeniden mi yükleyelim?\n\nOK = Tümünü sil ve yeniden yükle\nCancel = Mevcut verilerle birleştir');
+                    const syncMode = window.confirm('Mevcut verileri silip yeniden mi yükleyelim?\n\nOK = Tümünü sil ve yeniden yükle\nCancel = Mevcut verilerle birleştir');
                     
                     try {
                       setLoading(true);
