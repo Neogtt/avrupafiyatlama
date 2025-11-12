@@ -15,12 +15,16 @@ app.use(bodyParser.urlencoded({ extended: true }));
 // Initialize database
 dbService.initializeDatabase();
 
+// Auth middleware (sadece API route'ları için, static file serving'den önce)
+const authenticateToken = require('./middleware/auth');
+
 // API Routes (static file serving'den ÖNCE olmalı)
-app.use('/api/products', require('./routes/products'));
-app.use('/api/calculations', require('./routes/calculations'));
-app.use('/api/settings', require('./routes/settings'));
-app.use('/api/export', require('./routes/export'));
-app.use('/api/import', require('./routes/import'));
+app.use('/api/auth', require('./routes/auth')); // Auth route'ları middleware'den önce
+app.use('/api/products', authenticateToken, require('./routes/products'));
+app.use('/api/calculations', authenticateToken, require('./routes/calculations'));
+app.use('/api/settings', authenticateToken, require('./routes/settings'));
+app.use('/api/export', authenticateToken, require('./routes/export'));
+app.use('/api/import', authenticateToken, require('./routes/import'));
 
 // Serve static files from React app (production'da)
 const buildPath = path.join(__dirname, '../client/build');

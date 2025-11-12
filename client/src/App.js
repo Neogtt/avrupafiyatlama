@@ -13,6 +13,12 @@ if (process.env.NODE_ENV === 'development') {
 }
 
 function App() {
+  // Login state
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const [loginForm, setLoginForm] = useState({ username: '', password: '' });
+  const [loginError, setLoginError] = useState('');
+
   const [calculationMode, setCalculationMode] = useState('forward'); // 'forward' veya 'reverse'
   const [products, setProducts] = useState([]);
   const [selectedProduct, setSelectedProduct] = useState(null);
@@ -73,10 +79,77 @@ function App() {
     pallet_box_count: ''
   });
 
+  // Token'ı localStorage'dan al ve axios'a ekle
   useEffect(() => {
-    loadProducts();
-    loadMargins();
+    const token = localStorage.getItem('authToken');
+    if (token) {
+      // Axios default header'a token ekle
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      // Token'ı doğrula
+      verifyToken(token);
+    } else {
+      setIsCheckingAuth(false);
+    }
   }, []);
+
+  // Token doğrulama
+  const verifyToken = async (token) => {
+    try {
+      const response = await axios.get(`${API_BASE}/auth/verify`, {
+        params: { token }
+      });
+      if (response.data.success && response.data.valid) {
+        setIsAuthenticated(true);
+        loadProducts();
+        loadMargins();
+      } else {
+        localStorage.removeItem('authToken');
+        delete axios.defaults.headers.common['Authorization'];
+        setIsAuthenticated(false);
+      }
+    } catch (error) {
+      localStorage.removeItem('authToken');
+      delete axios.defaults.headers.common['Authorization'];
+      setIsAuthenticated(false);
+    } finally {
+      setIsCheckingAuth(false);
+    }
+  };
+
+  // Login fonksiyonu
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setLoginError('');
+
+    try {
+      const response = await axios.post(`${API_BASE}/auth/login`, {
+        username: loginForm.username,
+        password: loginForm.password
+      });
+
+      if (response.data.success) {
+        const token = response.data.token;
+        localStorage.setItem('authToken', token);
+        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        setIsAuthenticated(true);
+        loadProducts();
+        loadMargins();
+      }
+    } catch (error) {
+      setLoginError(error.response?.data?.error || 'Giriş başarısız. Lütfen tekrar deneyin.');
+    }
+  };
+
+  // Logout fonksiyonu
+  const handleLogout = () => {
+    localStorage.removeItem('authToken');
+    delete axios.defaults.headers.common['Authorization'];
+    setIsAuthenticated(false);
+    setProducts([]);
+    setSelectedProduct(null);
+    setCalculation(null);
+    setLoginForm({ username: '', password: '' });
+  };
 
   const loadProducts = async () => {
     try {
@@ -336,11 +409,144 @@ function App() {
     }
   };
 
+  // Login sayfası
+  if (isCheckingAuth) {
+    return (
+      <div className="App">
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+          <div>Yükleniyor...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="App">
+        <div style={{ 
+          display: 'flex', 
+          justifyContent: 'center', 
+          alignItems: 'center', 
+          minHeight: '100vh',
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+        }}>
+          <div style={{
+            background: 'white',
+            padding: '40px',
+            borderRadius: '10px',
+            boxShadow: '0 10px 40px rgba(0,0,0,0.2)',
+            width: '100%',
+            maxWidth: '400px'
+          }}>
+            <h1 style={{ textAlign: 'center', marginBottom: '30px', color: '#333' }}>
+              RAF Fiyat Analizi
+            </h1>
+            <p style={{ textAlign: 'center', marginBottom: '30px', color: '#666' }}>
+              Avrupa Gümrük Vergisi ve Maliyet Hesaplama Sistemi
+            </p>
+            <form onSubmit={handleLogin}>
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{ display: 'block', marginBottom: '8px', color: '#333', fontWeight: 'bold' }}>
+                  Kullanıcı Adı
+                </label>
+                <input
+                  type="text"
+                  value={loginForm.username}
+                  onChange={(e) => setLoginForm({ ...loginForm, username: e.target.value })}
+                  required
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    border: '1px solid #ddd',
+                    borderRadius: '5px',
+                    fontSize: '16px',
+                    boxSizing: 'border-box'
+                  }}
+                  placeholder="Kullanıcı adınızı girin"
+                />
+              </div>
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{ display: 'block', marginBottom: '8px', color: '#333', fontWeight: 'bold' }}>
+                  Şifre
+                </label>
+                <input
+                  type="password"
+                  value={loginForm.password}
+                  onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
+                  required
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    border: '1px solid #ddd',
+                    borderRadius: '5px',
+                    fontSize: '16px',
+                    boxSizing: 'border-box'
+                  }}
+                  placeholder="Şifrenizi girin"
+                />
+              </div>
+              {loginError && (
+                <div style={{
+                  marginBottom: '20px',
+                  padding: '12px',
+                  background: '#fee',
+                  color: '#c33',
+                  borderRadius: '5px',
+                  fontSize: '14px'
+                }}>
+                  {loginError}
+                </div>
+              )}
+              <button
+                type="submit"
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  background: '#667eea',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '5px',
+                  fontSize: '16px',
+                  fontWeight: 'bold',
+                  cursor: 'pointer',
+                  transition: 'background 0.3s'
+                }}
+                onMouseOver={(e) => e.target.style.background = '#5568d3'}
+                onMouseOut={(e) => e.target.style.background = '#667eea'}
+              >
+                Giriş Yap
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="App">
       <header className="App-header">
-        <h1>RAF Fiyat Analizi</h1>
-        <p>Avrupa Gümrük Vergisi ve Maliyet Hesaplama Sistemi</p>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+          <div>
+            <h1>RAF Fiyat Analizi</h1>
+            <p>Avrupa Gümrük Vergisi ve Maliyet Hesaplama Sistemi</p>
+          </div>
+          <button
+            onClick={handleLogout}
+            style={{
+              padding: '10px 20px',
+              background: '#dc3545',
+              color: 'white',
+              border: 'none',
+              borderRadius: '5px',
+              cursor: 'pointer',
+              fontSize: '14px',
+              fontWeight: 'bold'
+            }}
+          >
+            Çıkış Yap
+          </button>
+        </div>
       </header>
 
       <div className="container">
