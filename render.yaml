@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: raf-fiyat-analiz
+    env: node
+    plan: free
+    region: frankfurt
+    buildCommand: npm run install-all && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+    # NOT: Free plan'da persistent disk yok!
+    # Veritabanı için Starter plan ($7/ay) gerekli
+    # Veya PostgreSQL kullanılmalı
+    # disk:
+    #   name: raf-fiyat-db
+    #   mountPath: /opt/render/project/src/data
+    #   sizeGB: 1
+

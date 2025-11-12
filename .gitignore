@@ -1,0 +1,54 @@
+# Dependencies
+node_modules/
+client/node_modules/
+
+# Production build
+client/build/
+dist/
+
+# Environment variables
+.env
+.env.local
+.env.production
+.env.development
+
+# Database
+data/*.db
+data/*.db-journal
+*.db
+*.db-journal
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Temporary files
+*.tmp
+.cache/
+.temp/
+
+# Windows
+*.bat
+!BASLA.bat
+!BASLA-HEPSI.bat
+
+# Old files (not needed in production)
+database.js
+priceCalculator.js
+server.js
+public/
