@@ -453,7 +453,7 @@ function App() {
                         loadProducts();
                       }
                     } catch (error) {
-                      alert('Google Drive'dan yükleme hatası: ' + (error.response?.data?.error || error.message));
+                      alert('Google Drive\'dan yükleme hatası: ' + (error.response?.data?.error || error.message));
                     } finally {
                       setLoading(false);
                     }
