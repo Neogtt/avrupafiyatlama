@@ -57,4 +57,5 @@ desktop.ini
 database.js
 priceCalculator.js
 server.js
-public/
+# public/ klasörü client/public için gerekli, ignore etme
+# public/ (sadece root'taki eski public klasörü ignore edilir)

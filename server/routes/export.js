@@ -20,15 +20,39 @@ function readJsonFile(filePath) {
   return JSON.parse(content);
 }
 
+// Service Account'u al (Environment variable veya dosyadan)
+function getServiceAccount() {
+  // Önce environment variable'dan dene (Render production)
+  if (process.env.SERVICE_ACCOUNT_JSON) {
+    try {
+      // Base64'ten decode et
+      const base64Content = process.env.SERVICE_ACCOUNT_JSON;
+      const jsonContent = Buffer.from(base64Content, 'base64').toString('utf8');
+      return JSON.parse(jsonContent);
+    } catch (error) {
+      console.error('SERVICE_ACCOUNT_JSON decode hatası:', error.message);
+      throw new Error('SERVICE_ACCOUNT_JSON environment variable geçersiz format. Base64 encoded JSON olmalı.');
+    }
+  }
+  
+  // Render secret file'dan dene
+  const renderSecretPath = '/etc/secrets/service-account.json';
+  if (process.env.RENDER && fs.existsSync(renderSecretPath)) {
+    return readJsonFile(renderSecretPath);
+  }
+  
+  // Local development için dosyadan oku
+  if (fs.existsSync(SERVICE_ACCOUNT_PATH)) {
+    return readJsonFile(SERVICE_ACCOUNT_PATH);
+  }
+  
+  throw new Error('Service Account bulunamadı. SERVICE_ACCOUNT_JSON environment variable, /etc/secrets/service-account.json (Render secret file) veya service-account.json (local) dosyası gerekli.');
+}
+
 // Google Drive client oluştur (Service Account ile)
 async function getDriveClient() {
   try {
-    // Service Account dosyası var mı kontrol et
-    if (!fs.existsSync(SERVICE_ACCOUNT_PATH)) {
-      throw new Error('Google Drive service-account.json dosyası bulunamadı. Lütfen Google Cloud Console\'dan Service Account JSON key dosyasını indirip proje klasörüne service-account.json olarak ekleyin.');
-    }
-
-    const serviceAccount = readJsonFile(SERVICE_ACCOUNT_PATH);
+    const serviceAccount = getServiceAccount();
     
     // Service Account ile JWT auth
     const auth = new google.auth.JWT(
@@ -219,25 +243,22 @@ router.get('/excel', async (req, res) => {
 // Service Account durumunu kontrol et
 router.get('/check-service-account', (req, res) => {
   try {
-    if (!fs.existsSync(SERVICE_ACCOUNT_PATH)) {
-      return res.json({ 
-        configured: false,
-        message: 'Service Account dosyası bulunamadı. Lütfen service-account.json dosyasını ekleyin.' 
-      });
-    }
-
-    const serviceAccount = readJsonFile(SERVICE_ACCOUNT_PATH);
+    const serviceAccount = getServiceAccount();
     
     return res.json({ 
       configured: true,
+      source: process.env.SERVICE_ACCOUNT_JSON ? 'Environment Variable (Base64)' 
+        : (process.env.RENDER && fs.existsSync('/etc/secrets/service-account.json') ? 'Render Secret File' 
+        : 'Local File'),
       client_email: serviceAccount.client_email,
       project_id: serviceAccount.project_id,
       message: 'Service Account yapılandırılmış ve hazır!' 
     });
   } catch (error) {
-    return res.status(500).json({ 
+    return res.json({ 
       configured: false,
-      error: error.message 
+      error: error.message,
+      message: 'Service Account bulunamadı. Lütfen yapılandırın.' 
     });
   }
 });

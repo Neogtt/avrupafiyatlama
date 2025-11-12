@@ -1,14 +1,16 @@
 services:
   - type: web
-    name: raf-fiyat-analiz
+    name: avrupafiyatlama
     env: node
     plan: free
     region: frankfurt
-    buildCommand: npm run install-all && npm run build
+    buildCommand: npm install && cd client && npm install && npm run build && cd ..
     startCommand: npm start
     envVars:
       - key: NODE_ENV
         value: production
+      - key: PORT
+        value: 10000
     # NOT: Free plan'da persistent disk yok!
     # Veritabanı için Starter plan ($7/ay) gerekli
     # Veya PostgreSQL kullanılmalı
